@@ -1,0 +1,28 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Downloaded REP data and temporary files
+/66/
+/67/
+/68/
+/69/
+*.part
+
+# Local backups and runtime state
+/Backup code/
+*.log
+.env
+
+# NHSO credentials and browser state must never be committed
+settings.dat
+sso_token.dat
+sso_browser_profile/
+
+# Future local web application state
+app.db
+webapp_settings.json
+/data/
+/logs/
