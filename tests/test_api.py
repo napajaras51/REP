@@ -21,6 +21,13 @@ class HealthApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
 
+    def test_unknown_api_route_uses_standard_error_contract(self):
+        response = self.client.get("/api/not-found")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["success"], False)
+        self.assertEqual(response.json()["error"]["code"], "NOT_FOUND")
+
     def test_application_metadata_is_stable(self):
         self.assertEqual(self.app.title, "NHSO REP Download Manager")
         self.assertEqual(self.app.version, "0.2.0")

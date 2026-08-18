@@ -134,7 +134,13 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.json(),
-            {"detail": "An NHSO download job is already running"},
+            {
+                "success": False,
+                "error": {
+                    "code": "JOB_CONFLICT",
+                    "message": "มีงานดาวน์โหลด NHSO กำลังทำงานอยู่",
+                },
+            },
         )
 
     def test_job_status_and_logs_use_job_manager(self):
@@ -167,6 +173,20 @@ class WebApiTests(unittest.TestCase):
         response = self.client.post("/api/downloads/preview", json=request_body)
 
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["error"]["code"], "VALIDATION_ERROR")
+        run_download.assert_not_called()
+
+    @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
+    def test_abnormally_long_date_range_is_rejected(self, run_download):
+        request_body = dict(
+            VALID_REQUEST,
+            start_date="2025-01-01",
+            end_date="2026-02-01",
+        )
+        response = self.client.post("/api/downloads/preview", json=request_body)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["error"]["message"], "ข้อมูลที่ระบุไม่ถูกต้อง")
         run_download.assert_not_called()
 
     @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
@@ -178,7 +198,7 @@ class WebApiTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {"detail": "Cross-origin request blocked"})
+        self.assertEqual(response.json()["error"]["code"], "FORBIDDEN")
         run_download.assert_not_called()
 
     @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
@@ -187,10 +207,7 @@ class WebApiTests(unittest.TestCase):
         response = self.client.post("/api/downloads/preview", json=VALID_REQUEST)
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(
-            response.json(),
-            {"detail": "NHSO session is not ready. Login again."},
-        )
+        self.assertEqual(response.json()["error"]["code"], "LOGIN_REQUIRED")
 
     @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
     def test_upstream_runtime_detail_is_not_exposed(self, run_download):
@@ -198,10 +215,7 @@ class WebApiTests(unittest.TestCase):
         response = self.client.post("/api/downloads/preview", json=VALID_REQUEST)
 
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.json(),
-            {"detail": "NHSO request could not be completed"},
-        )
+        self.assertEqual(response.json()["error"]["message"], "ไม่สามารถดำเนินการกับ NHSO ได้")
         self.assertNotIn("sensitive", response.text)
 
     @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
@@ -210,7 +224,7 @@ class WebApiTests(unittest.TestCase):
         response = self.client.post("/api/downloads/preview", json=VALID_REQUEST)
 
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.json(), {"detail": "Unable to connect to NHSO"})
+        self.assertEqual(response.json()["error"]["code"], "NHSO_UNAVAILABLE")
         self.assertNotIn("sensitive", response.text)
 
 

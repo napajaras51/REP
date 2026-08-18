@@ -20,6 +20,12 @@ class PureFunctionTests(unittest.TestCase):
         self.assertEqual(downloader.output_name("ABC.ecd"), "ABC_REP.xls")
         self.assertEqual(downloader.output_name("ABC.ECD"), "ABC_REP.xls")
 
+    def test_source_filename_rejects_path_traversal(self):
+        self.assertTrue(downloader.is_safe_source_filename("ABC_25690501.ecd"))
+        self.assertFalse(downloader.is_safe_source_filename(r"..\secret.ecd"))
+        self.assertFalse(downloader.is_safe_source_filename("../secret.ecd"))
+        self.assertFalse(downloader.is_safe_source_filename(""))
+
     def test_ready_status_supports_both_nhso_fields(self):
         self.assertTrue(downloader.is_ready({"loaded": "Y"}))
         self.assertTrue(downloader.is_ready({"dataStatus": "1"}))
@@ -97,9 +103,11 @@ class DownloadServiceTests(unittest.TestCase):
             ),
         )
 
-    def run_with_patches(self, items, **options):
+    def run_with_patches(self, items, existing_names=None, **options):
         session, *patchers = self.service_patches(items)
         with tempfile.TemporaryDirectory() as temp_dir:
+            for name in existing_names or []:
+                (Path(temp_dir) / name).write_bytes(b"existing")
             with patchers[0], patchers[1], patchers[2], patchers[3], patchers[4], patchers[5]:
                 result = downloader.download_rep(
                     start="2026-05-01",
@@ -137,6 +145,34 @@ class DownloadServiceTests(unittest.TestCase):
             },
         )
         self.assertEqual(result["files"][0]["result"], "matched")
+
+    def test_dry_run_classifies_existing_file_without_writing(self):
+        items = [{"filename": "READY_25690501.ecd", "loaded": "Y"}]
+        result = self.run_with_patches(
+            items,
+            existing_names=["READY_25690501_REP.xls"],
+            dry_run=True,
+        )
+
+        self.assertEqual(result["stats"]["matched"], 1)
+        self.assertEqual(result["stats"]["exists"], 1)
+        self.assertEqual(result["stats"]["downloaded"], 0)
+        self.assertEqual(result["files"][0]["result"], "exists")
+        self.assertTrue(result["files"][0]["exists"])
+
+    def test_unsafe_nhso_filename_is_failed_before_download(self):
+        items = [{"filename": r"..\READY_25690501.ecd", "loaded": "Y"}]
+        with patch.object(downloader, "download_file") as download_file:
+            with self.assertLogs(downloader.logger, level="ERROR"):
+                result = self.run_with_patches(
+                    items,
+                    dry_run=True,
+                    log_callback=lambda _message, level="info": None,
+                )
+
+        download_file.assert_not_called()
+        self.assertEqual(result["stats"]["failed"], 1)
+        self.assertEqual(result["files"][0]["result"], "invalid_filename")
 
     def test_download_results_are_classified(self):
         items = [
@@ -204,6 +240,22 @@ class DownloadFileTests(unittest.TestCase):
             )
 
         self.assertEqual(result, "exists")
+        session.get.assert_not_called()
+
+    def test_unsafe_filename_is_rejected_without_request(self):
+        session = MagicMock()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result, name = downloader.download_file(
+                session,
+                {},
+                "redacted",
+                "11066",
+                {"filename": r"..\secret.ecd"},
+                Path(temp_dir),
+                False,
+            )
+
+        self.assertEqual((result, name), ("invalid_filename", ""))
         session.get.assert_not_called()
 
 

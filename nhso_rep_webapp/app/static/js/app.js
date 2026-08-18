@@ -115,6 +115,7 @@
   }
 
   function errorMessage(data, fallback) {
+    if (typeof data?.error?.message === "string") return data.error.message;
     if (typeof data?.detail === "string") return data.detail;
     if (Array.isArray(data?.detail) && data.detail.length) return data.detail[0].msg;
     return fallback;
@@ -137,7 +138,8 @@
     const labels = {
       matched: "พร้อมดาวน์โหลด",
       downloaded: "ดาวน์โหลดแล้ว",
-      exists: "มีอยู่แล้ว"
+      exists: "มีอยู่แล้ว",
+      overwrite: "เขียนทับ"
     };
     return labels[result] || result || "ไม่ทราบผล";
   }

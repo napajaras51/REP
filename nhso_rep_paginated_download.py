@@ -139,6 +139,13 @@ def output_name(filename):
     return filename.replace(".ecd", "_REP.xls").replace(".ECD", "_REP.xls")
 
 
+def is_safe_source_filename(filename):
+    """Return whether an NHSO filename is a single local file name."""
+    if not filename or filename in {".", ".."} or "\x00" in filename:
+        return False
+    return Path(filename).name == filename and "/" not in filename and "\\" not in filename
+
+
 def is_ready(item):
     return item.get("loaded") == "Y" or item.get("dataStatus") == "1"
 
@@ -307,6 +314,8 @@ def download_file(
     session, headers, token, hcode, item, dest_dir, overwrite, log_callback=None
 ):
     source_name = item["filename"]
+    if not is_safe_source_filename(source_name):
+        return "invalid_filename", ""
     dest_name = output_name(source_name)
     dest = dest_dir / dest_name
     if dest.exists() and not overwrite:
@@ -545,11 +554,33 @@ def download_rep(
                     continue
 
                 stats["matched"] += 1
+                if not is_safe_source_filename(filename):
+                    stats["failed"] += 1
+                    errors.append(f"{filename}: invalid_filename")
+                    file_result = {
+                        "source_name": filename,
+                        "output_name": "",
+                        "result": "invalid_filename",
+                        "exists": False,
+                    }
+                    files.append(file_result)
+                    _emit_log(log_callback, "invalid_filename: rejected NHSO source name", "error")
+                    _emit_progress(
+                        progress_callback,
+                        {"event": "file_result", "file": file_result, "stats": stats.copy()},
+                    )
+                    continue
                 dest_name = output_name(filename)
                 if dry_run:
-                    result = "matched"
-                    _emit_log(log_callback, f"match: {dest_name}")
+                    destination_exists = (dest_dir / dest_name).exists()
+                    if destination_exists:
+                        stats["exists"] += 1
+                        result = "overwrite" if overwrite else "exists"
+                    else:
+                        result = "matched"
+                    _emit_log(log_callback, f"{result}: {dest_name}")
                 else:
+                    destination_exists = (dest_dir / dest_name).exists()
                     result, dest_name = download_file(
                         session,
                         headers,
@@ -573,6 +604,7 @@ def download_rep(
                     "source_name": filename,
                     "output_name": dest_name,
                     "result": result,
+                    "exists": destination_exists,
                 }
                 files.append(file_result)
                 _emit_progress(

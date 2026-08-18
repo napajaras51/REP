@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 def job_status(job_id: str, request: Request):
     job = request.app.state.job_manager.get(job_id)
     if job is None:
-        raise HTTPException(status_code=404, detail="Download job not found")
+        raise HTTPException(status_code=404, detail="ไม่พบงานดาวน์โหลด")
     return job
 
 
@@ -18,5 +18,5 @@ def job_status(job_id: str, request: Request):
 def job_logs(job_id: str, request: Request):
     logs = request.app.state.job_manager.get_logs(job_id)
     if logs is None:
-        raise HTTPException(status_code=404, detail="Download job not found")
+        raise HTTPException(status_code=404, detail="ไม่พบงานดาวน์โหลด")
     return {"job_id": job_id, "logs": logs}

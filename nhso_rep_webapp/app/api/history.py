@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 def _store(request: Request):
     store = request.app.state.history_store
     if store is None:
-        raise HTTPException(status_code=503, detail="Download history is unavailable")
+        raise HTTPException(status_code=503, detail="ประวัติการดาวน์โหลดไม่พร้อมใช้งาน")
     return store
 
 
@@ -26,5 +26,5 @@ def list_history(
 def history_detail(job_id: str, request: Request):
     job = _store(request).get_job(job_id)
     if job is None:
-        raise HTTPException(status_code=404, detail="Download history not found")
+        raise HTTPException(status_code=404, detail="ไม่พบประวัติการดาวน์โหลด")
     return job

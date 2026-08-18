@@ -44,7 +44,7 @@ def job_detail_page(job_id: str, request: Request):
     store = request.app.state.history_store
     job = store.get_job(job_id) if store else None
     if job is None:
-        raise HTTPException(status_code=404, detail="Download history not found")
+        raise HTTPException(status_code=404, detail="ไม่พบประวัติการดาวน์โหลด")
     return templates.TemplateResponse(
         request=request,
         name="job_detail.html",

@@ -4,7 +4,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -13,6 +12,7 @@ from .services.job_manager import JobManager
 from .services.history_store import HistoryStore
 from .services.settings_store import SettingsStore
 from .services import rep_service
+from .errors import error_response, register_error_handlers
 
 
 def create_app(job_manager=None, history_store=None, settings_store=None) -> FastAPI:
@@ -33,13 +33,14 @@ def create_app(job_manager=None, history_store=None, settings_store=None) -> Fas
     application.state.settings_store = settings_store or SettingsStore(
         default_destination=rep_service.get_default_destination()
     )
+    register_error_handlers(application)
 
     @application.middleware("http")
     async def reject_cross_origin_writes(request, call_next):
         if request.method not in {"GET", "HEAD", "OPTIONS"}:
             origin = request.headers.get("origin")
             if origin and urlparse(origin).hostname not in {"127.0.0.1", "localhost", "::1"}:
-                return JSONResponse(status_code=403, content={"detail": "Cross-origin request blocked"})
+                return error_response(403, "FORBIDDEN", "Cross-origin request blocked")
         return await call_next(request)
 
     static_dir = Path(__file__).resolve().parent / "static"

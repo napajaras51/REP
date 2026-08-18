@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
 
+import requests
+
 from . import rep_service
 
 
@@ -164,14 +166,28 @@ class JobManager:
                 current = self._jobs[job_id]
                 message = str(exc)
                 auth_error = "SSO" in message or "session" in message.lower()
+                if auth_error:
+                    code = "LOGIN_REQUIRED"
+                    safe_message = "NHSO session ไม่พร้อมใช้งาน กรุณาเข้าสู่ระบบใหม่"
+                elif isinstance(exc, PermissionError):
+                    code = "DESTINATION_PERMISSION"
+                    safe_message = "ไม่มีสิทธิ์เขียนไฟล์ลงโฟลเดอร์ปลายทาง"
+                elif isinstance(exc, OSError):
+                    code = "DESTINATION_ERROR"
+                    safe_message = "ไม่สามารถเขียนไฟล์ลงโฟลเดอร์ปลายทาง"
+                elif isinstance(exc, requests.RequestException):
+                    code = "NETWORK_ERROR"
+                    safe_message = "ไม่สามารถเชื่อมต่อ NHSO ได้"
+                elif isinstance(exc, ValueError):
+                    code = "VALIDATION_ERROR"
+                    safe_message = "ข้อมูลสำหรับดาวน์โหลดไม่ถูกต้อง"
+                else:
+                    code = "JOB_FAILED"
+                    safe_message = "งานดาวน์โหลดไม่สำเร็จ"
                 current.status = "failed"
                 current.error = {
-                    "code": "LOGIN_REQUIRED" if auth_error else "JOB_FAILED",
-                    "message": (
-                        "NHSO session is not ready. Login again."
-                        if auth_error
-                        else "Download job could not be completed"
-                    ),
+                    "code": code,
+                    "message": safe_message,
                 }
                 self._append_log(current, current.error["message"], "error")
         finally:

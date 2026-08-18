@@ -15,22 +15,22 @@ def _run_request(request: DownloadRequest, *, dry_run: bool) -> dict:
     try:
         return rep_service.run_download(request, dry_run=dry_run)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail="ข้อมูลสำหรับดาวน์โหลดไม่ถูกต้อง") from exc
     except RuntimeError as exc:
         message = str(exc)
         if "SSO" in message or "session" in message.lower():
             raise HTTPException(
                 status_code=401,
-                detail="NHSO session is not ready. Login again.",
+                detail="NHSO session ไม่พร้อมใช้งาน กรุณาเข้าสู่ระบบใหม่",
             ) from exc
         raise HTTPException(
             status_code=502,
-            detail="NHSO request could not be completed",
+            detail="ไม่สามารถดำเนินการกับ NHSO ได้",
         ) from exc
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail="Unable to connect to NHSO") from exc
+        raise HTTPException(status_code=502, detail="ไม่สามารถเชื่อมต่อ NHSO ได้") from exc
     except OSError as exc:
-        raise HTTPException(status_code=400, detail="Cannot use destination folder") from exc
+        raise HTTPException(status_code=400, detail="ไม่สามารถใช้โฟลเดอร์ปลายทางได้") from exc
 
 
 def _remember_dates(request: Request, download_request: DownloadRequest) -> None:
@@ -57,6 +57,6 @@ def start_download(download_request: DownloadRequest, request: Request):
     except JobConflictError as exc:
         raise HTTPException(
             status_code=409,
-            detail="An NHSO download job is already running",
+            detail="มีงานดาวน์โหลด NHSO กำลังทำงานอยู่",
         ) from exc
     return {"job_id": job_id, "status": "queued"}

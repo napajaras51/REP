@@ -20,12 +20,16 @@ class DownloadRequest(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Destination must not be blank")
+        if "\x00" in value:
+            raise ValueError("Destination contains an invalid character")
         return value
 
     @model_validator(mode="after")
     def dates_must_be_ordered(self):
         if self.end_date < self.start_date:
             raise ValueError("End date must not be before start date")
+        if (self.end_date - self.start_date).days > 366:
+            raise ValueError("Date range must not exceed 366 days")
         return self
 
 

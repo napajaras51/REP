@@ -43,7 +43,7 @@
         })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "บันทึกไม่สำเร็จ");
+      if (!response.ok) throw new Error(data.error?.message || data.detail || "บันทึกไม่สำเร็จ");
       showMessage("บันทึกการตั้งค่าแล้ว", false);
     } catch (error) {
       showMessage(error.message, true);
