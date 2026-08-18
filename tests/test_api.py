@@ -36,7 +36,8 @@ class HealthApiTests(unittest.TestCase):
 class LocalBindingTests(unittest.TestCase):
     def test_launcher_binds_to_loopback_only(self):
         with patch.object(run_webapp.uvicorn, "run") as run:
-            run_webapp.main()
+            with patch.object(run_webapp, "configure_logging"):
+                run_webapp.main(["--no-browser"])
 
         run.assert_called_once_with(
             "nhso_rep_webapp.app.main:app",
