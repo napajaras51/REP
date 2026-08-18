@@ -138,6 +138,15 @@ logs\webapp.log
 
 Job log ล่าสุดดูได้จากหน้า download ระหว่างงานทำงาน ข้อความถูก sanitize ก่อนเก็บใน memory
 
+## Previous-month automation
+
+หน้า `ตั้งค่า` มีปุ่ม `ตรวจสอบแบบ Dry Run` สำหรับสร้าง background job ของเดือนก่อนหน้า
+
+- ต้องกดเองทุกครั้ง
+- ค่าเริ่มต้นเป็น Dry Run
+- Overwrite ถูกล็อกเป็น false
+- ไม่มี scheduler และไม่มีงานที่เริ่มเองตอนเปิดโปรแกรม
+
 ## ใช้ CLI เป็น fallback
 
 Dry Run:

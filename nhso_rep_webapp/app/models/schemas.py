@@ -58,3 +58,21 @@ class WebSettings(BaseModel):
         if not value:
             raise ValueError("Default destination must not be blank")
         return value
+
+
+class PreviousMonthAutomationRequest(BaseModel):
+    destination: str | None = Field(default=None, max_length=1024)
+    dry_run: bool = True
+    insecure: bool | None = None
+    hcode: str | None = Field(default=None, pattern=r"^\d{5}$")
+    page_size: int | None = Field(default=None, ge=1, le=10000)
+
+    @field_validator("destination")
+    @classmethod
+    def automation_destination_must_not_be_blank(cls, value: str | None):
+        if value is None:
+            return value
+        value = value.strip()
+        if not value or "\x00" in value:
+            raise ValueError("Destination is invalid")
+        return value

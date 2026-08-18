@@ -60,6 +60,7 @@ class DownloadJob:
     job_id: str
     request: object
     request_data: dict
+    dry_run: bool = False
     status: str = "queued"
     created_at: str = field(default_factory=utc_now)
     started_at: str | None = None
@@ -82,7 +83,7 @@ class JobManager:
         self._active_job_id: str | None = None
         self._lock = threading.RLock()
 
-    def submit(self, request) -> str:
+    def submit(self, request, *, dry_run: bool = False) -> str:
         with self._lock:
             if self._active_job_id:
                 active = self._jobs.get(self._active_job_id)
@@ -91,7 +92,13 @@ class JobManager:
 
             job_id = uuid.uuid4().hex
             request_data = request.model_dump(mode="json")
-            job = DownloadJob(job_id=job_id, request=request, request_data=request_data)
+            request_data["dry_run"] = bool(dry_run)
+            job = DownloadJob(
+                job_id=job_id,
+                request=request,
+                request_data=request_data,
+                dry_run=bool(dry_run),
+            )
             self._jobs[job_id] = job
             self._active_job_id = job_id
             if self._history_store:
@@ -149,7 +156,7 @@ class JobManager:
         try:
             result = self._runner(
                 job.request,
-                dry_run=False,
+                dry_run=job.dry_run,
                 progress_callback=progress_callback,
                 log_callback=log_callback,
             )

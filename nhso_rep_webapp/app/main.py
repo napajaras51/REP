@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .api import auth, downloads, history, jobs, pages, settings
+from .api import auth, automation, downloads, history, jobs, pages, settings
 from .services.job_manager import JobManager
 from .services.history_store import HistoryStore
 from .services.settings_store import SettingsStore
@@ -19,7 +19,7 @@ def create_app(job_manager=None, history_store=None, settings_store=None) -> Fas
     """Create the local NHSO REP FastAPI application."""
     application = FastAPI(
         title="NHSO REP Download Manager",
-        version="0.2.0",
+        version="1.0.0",
     )
     application.add_middleware(
         TrustedHostMiddleware,
@@ -51,6 +51,7 @@ def create_app(job_manager=None, history_store=None, settings_store=None) -> Fas
     application.include_router(jobs.router)
     application.include_router(history.router)
     application.include_router(settings.router)
+    application.include_router(automation.router)
 
     @application.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:

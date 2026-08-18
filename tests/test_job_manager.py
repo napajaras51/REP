@@ -125,6 +125,22 @@ class JobManagerTests(unittest.TestCase):
         finally:
             manager.shutdown(wait=True)
 
+    def test_dry_run_job_is_forwarded_to_runner_and_request_snapshot(self):
+        calls = []
+
+        def runner(_request, *, dry_run, **_kwargs):
+            calls.append(dry_run)
+            return {"status": "completed", "stats": {}, "files": []}
+
+        manager = JobManager(runner=runner)
+        try:
+            job_id = manager.submit(request_model(), dry_run=True)
+            completed = wait_for_status(manager, job_id, {"completed"})
+            self.assertEqual(calls, [True])
+            self.assertTrue(completed["request"]["dry_run"])
+        finally:
+            manager.shutdown(wait=True)
+
 
 if __name__ == "__main__":
     unittest.main()

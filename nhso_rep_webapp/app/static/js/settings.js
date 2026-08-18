@@ -6,6 +6,8 @@
   const pageSize = document.getElementById("defaultPageSize");
   const insecure = document.getElementById("defaultInsecure");
   const alert = document.getElementById("settingsAlert");
+  const previousMonthDryRun = document.getElementById("previousMonthDryRun");
+  const automationResult = document.getElementById("automationResult");
 
   function showMessage(message, isError) {
     alert.textContent = message;
@@ -47,6 +49,25 @@
       showMessage("บันทึกการตั้งค่าแล้ว", false);
     } catch (error) {
       showMessage(error.message, true);
+    }
+  });
+
+  previousMonthDryRun.addEventListener("click", async () => {
+    previousMonthDryRun.disabled = true;
+    automationResult.textContent = "กำลังสร้างงาน";
+    try {
+      const response = await fetch("/api/automation/previous-month", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dry_run: true })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || "สร้างงานไม่สำเร็จ");
+      automationResult.textContent = `Job ${data.job_id.slice(0, 8)}: ${data.start_date} – ${data.end_date}`;
+    } catch (error) {
+      automationResult.textContent = error.message;
+    } finally {
+      previousMonthDryRun.disabled = false;
     }
   });
 
