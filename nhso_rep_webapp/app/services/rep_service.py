@@ -70,6 +70,7 @@ def run_download(
         end=request.end_date.isoformat(),
         dest_path=Path(request.destination),
         hcode=request.hcode,
+        page_size=request.page_size,
         overwrite=request.overwrite,
         dry_run=dry_run,
         insecure=request.insecure,

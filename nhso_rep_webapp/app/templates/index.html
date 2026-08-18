@@ -22,6 +22,7 @@
       <nav class="header-nav" aria-label="เมนูหลัก">
         <a class="is-active" href="/">ดาวน์โหลด</a>
         <a href="/history">ประวัติ</a>
+        <a href="/settings">ตั้งค่า</a>
       </nav>
 
       <div class="auth-strip" aria-live="polite">
@@ -64,6 +65,12 @@
           </div>
 
           <form id="downloadForm" novalidate>
+            <div class="field-block preset-block">
+              <label class="form-label" for="datePreset">ช่วงวันที่</label>
+              <select class="form-select" id="datePreset">
+                <option value="custom">กำหนดเอง</option>
+              </select>
+            </div>
             <div class="date-grid">
               <div>
                 <label class="form-label" for="startDate">วันที่เริ่มต้น</label>
@@ -84,7 +91,7 @@
                   id="destination"
                   name="destination"
                   type="text"
-                  value="{{ default_destination }}"
+                  value="{{ web_settings.default_destination }}"
                   autocomplete="off"
                   spellcheck="false"
                   required
@@ -184,7 +191,7 @@
     </section>
   </main>
 
-  <script>window.REP_APP = { defaultDestination: {{ default_destination | tojson }} };</script>
+  <script>window.REP_APP = {{ web_settings | tojson }};</script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
   <script src="{{ url_for('static', path='/js/app.js') }}"></script>
 </body>

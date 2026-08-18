@@ -134,6 +134,7 @@ h2 { font-size: 17px; font-weight: 650; }
 .field-block { margin-top: 16px; }
 .form-label { margin-bottom: 6px; color: #34404b; font-size: 12px; font-weight: 650; }
 .form-control { min-height: 40px; border-color: #bec8d1; border-radius: 5px; color: var(--ink); font-size: 14px; }
+.form-select { min-height: 40px; border-color: #bec8d1; border-radius: 5px; color: var(--ink); font-size: 14px; }
 .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(8, 122, 107, .12); }
 .input-icon-wrap { position: relative; }
 .input-icon-wrap > svg { position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
@@ -147,6 +148,7 @@ h2 { font-size: 17px; font-weight: 650; }
 .advanced-body { display: grid; gap: 14px; margin-top: 14px; padding: 14px; background: #f7f9fa; border: 1px solid var(--line); border-radius: 5px; }
 .insecure-option { margin: 0; }
 .form-alert { margin-top: 15px; padding: 10px 12px; border-left: 3px solid var(--danger); background: #fff1f0; color: #7a271f; font-size: 13px; }
+.form-alert.is-success { border-left-color: var(--accent); background: #eefaf7; color: var(--accent-dark); }
 .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
 .action-row .btn { min-height: 42px; }
 .btn-primary { --bs-btn-bg: var(--accent); --bs-btn-border-color: var(--accent); --bs-btn-hover-bg: var(--accent-dark); --bs-btn-hover-border-color: var(--accent-dark); }
@@ -212,10 +214,16 @@ h2 { font-size: 17px; font-weight: 650; }
 .detail-row strong { font-size: 12px; font-weight: 650; }
 .path-value { overflow-wrap: anywhere; }
 .detail-results { min-height: 380px; }
+.settings-layout { display: grid; grid-template-columns: minmax(0, 620px) minmax(240px, 320px); gap: 28px; align-items: start; }
+.settings-form, .settings-meta { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; }
+.settings-form { display: grid; gap: 18px; padding: 22px; }
+.settings-meta { overflow: hidden; }
+.settings-actions { display: flex; justify-content: flex-end; }
 
 @media (max-width: 900px) {
   .workspace-grid { grid-template-columns: 1fr; }
   .detail-layout { grid-template-columns: 1fr; }
+  .settings-layout { grid-template-columns: 1fr; }
   .result-pane { min-height: 440px; }
 }
 

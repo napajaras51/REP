@@ -9,6 +9,7 @@
     overwrite: document.getElementById("overwrite"),
     insecure: document.getElementById("insecure"),
     hcode: document.getElementById("hcode"),
+    datePreset: document.getElementById("datePreset"),
     previewButton: document.getElementById("previewButton"),
     downloadButton: document.getElementById("downloadButton"),
     loginButton: document.getElementById("loginButton"),
@@ -32,6 +33,8 @@
     jobLogPanel: document.getElementById("jobLogPanel"),
     jobLogList: document.getElementById("jobLogList")
   };
+  let applicationSettings = window.REP_APP || {};
+  let availablePresets = [];
 
   function isoDate(date) {
     const year = date.getFullYear();
@@ -45,6 +48,46 @@
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     elements.startDate.value = isoDate(firstDay);
     elements.endDate.value = isoDate(today);
+  }
+
+  function applyPreset(presetId) {
+    if (presetId === "custom") return;
+    const preset = availablePresets.find((item) => item.id === presetId);
+    if (!preset) return;
+    elements.startDate.value = preset.start_date;
+    elements.endDate.value = preset.end_date;
+  }
+
+  async function loadConfiguration() {
+    try {
+      const [settingsResponse, presetsResponse] = await Promise.all([
+        fetch("/api/settings"),
+        fetch("/api/settings/presets")
+      ]);
+      if (!settingsResponse.ok || !presetsResponse.ok) return;
+      applicationSettings = await settingsResponse.json();
+      const presetData = await presetsResponse.json();
+      availablePresets = presetData.presets || [];
+      availablePresets.forEach((preset) => {
+        const option = document.createElement("option");
+        option.value = preset.id;
+        option.textContent = preset.label;
+        elements.datePreset.appendChild(option);
+      });
+      elements.destination.value = applicationSettings.default_destination;
+      elements.insecure.checked = applicationSettings.default_insecure;
+      if (applicationSettings.last_start_date && applicationSettings.last_end_date) {
+        elements.startDate.value = applicationSettings.last_start_date;
+        elements.endDate.value = applicationSettings.last_end_date;
+        elements.datePreset.value = "custom";
+      } else if (availablePresets.length) {
+        elements.datePreset.value = "current_month";
+        applyPreset("current_month");
+      }
+      refreshAuthStatus();
+    } catch (_error) {
+      return;
+    }
   }
 
   function setBusy(isBusy, label) {
@@ -85,7 +128,8 @@
       destination: elements.destination.value.trim(),
       overwrite: elements.overwrite.checked,
       insecure: elements.insecure.checked,
-      hcode: hcode || null
+      hcode: hcode || null,
+      page_size: Number(applicationSettings.default_page_size || 3000)
     };
   }
 
@@ -283,9 +327,13 @@
   elements.loginButton.addEventListener("click", loginSso);
   elements.clearButton.addEventListener("click", clearResults);
   elements.insecure.addEventListener("change", refreshAuthStatus);
+  elements.datePreset.addEventListener("change", () => applyPreset(elements.datePreset.value));
+  elements.startDate.addEventListener("change", () => { elements.datePreset.value = "custom"; });
+  elements.endDate.addEventListener("change", () => { elements.datePreset.value = "custom"; });
 
   setDefaultDates();
   clearResults();
+  loadConfiguration();
   refreshAuthStatus();
   if (window.lucide) window.lucide.createIcons();
 })();

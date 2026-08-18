@@ -12,6 +12,7 @@ class DownloadRequest(BaseModel):
     overwrite: bool = False
     insecure: bool = False
     hcode: str | None = Field(default=None, pattern=r"^\d{5}$")
+    page_size: int = Field(default=3000, ge=1, le=10000)
 
     @field_validator("destination")
     @classmethod
@@ -37,3 +38,19 @@ class AuthStatusResponse(BaseModel):
 class AuthLoginResponse(BaseModel):
     success: bool
     status: str
+
+
+class WebSettings(BaseModel):
+    default_destination: str = Field(min_length=1, max_length=1024)
+    default_page_size: int = Field(default=3000, ge=1, le=10000)
+    default_insecure: bool = False
+    last_start_date: date | None = None
+    last_end_date: date | None = None
+
+    @field_validator("default_destination")
+    @classmethod
+    def default_destination_must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Default destination must not be blank")
+        return value

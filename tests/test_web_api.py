@@ -15,6 +15,7 @@ VALID_REQUEST = {
     "overwrite": False,
     "insecure": False,
     "hcode": None,
+    "page_size": 3000,
 }
 
 SERVICE_RESULT = {
@@ -51,22 +52,32 @@ SERVICE_RESULT = {
 class WebApiTests(unittest.TestCase):
     def setUp(self):
         self.job_manager = MagicMock()
-        self.client = TestClient(create_app(job_manager=self.job_manager))
+        self.settings_store = MagicMock()
+        self.settings_store.get.return_value = {
+            "default_destination": r"D:\REP\69\6906",
+            "default_page_size": 3000,
+            "default_insecure": False,
+            "last_start_date": None,
+            "last_end_date": None,
+        }
+        self.client = TestClient(
+            create_app(
+                job_manager=self.job_manager,
+                settings_store=self.settings_store,
+            )
+        )
 
     def tearDown(self):
         self.client.close()
 
-    @patch(
-        "nhso_rep_webapp.app.api.pages.get_default_destination",
-        return_value=r"D:\REP\69\6906",
-    )
-    def test_homepage_renders_thai_download_workspace(self, _destination):
+    def test_homepage_renders_thai_download_workspace(self):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("รับชุดข้อมูลผลการตรวจสอบ (REP)", response.text)
         self.assertIn(r"D:\REP\69\6906", response.text)
         self.assertIn("/static/css/app.css", response.text)
+        self.assertIn("datePreset", response.text)
         self.assertNotIn("sso_token", response.text.lower())
 
     @patch("nhso_rep_webapp.app.api.auth.rep_service.check_auth_status")
@@ -105,6 +116,7 @@ class WebApiTests(unittest.TestCase):
         request = run_download.call_args.args[0]
         self.assertEqual(request.destination, VALID_REQUEST["destination"])
         self.assertFalse(request.overwrite)
+        self.settings_store.update_recent.assert_called_once()
 
     def test_download_queues_background_job(self):
         self.job_manager.submit.return_value = "job-123"

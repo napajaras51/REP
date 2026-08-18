@@ -102,6 +102,7 @@ class DownloadAdapterTests(unittest.TestCase):
             overwrite=True,
             dry_run=True,
             insecure=True,
+            page_size=3000,
             progress_callback=None,
             log_callback=None,
         )
