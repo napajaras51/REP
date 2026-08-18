@@ -23,7 +23,7 @@ class HealthApiTests(unittest.TestCase):
 
     def test_application_metadata_is_stable(self):
         self.assertEqual(self.app.title, "NHSO REP Download Manager")
-        self.assertEqual(self.app.version, "0.1.0")
+        self.assertEqual(self.app.version, "0.2.0")
 
 
 class LocalBindingTests(unittest.TestCase):

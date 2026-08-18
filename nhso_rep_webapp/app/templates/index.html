@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NHSO REP Download Manager</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', path='/css/app.css') }}" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container-fluid app-container header-inner">
+      <a class="brand" href="/" aria-label="NHSO REP Download Manager">
+        <span class="brand-mark"><i data-lucide="file-down"></i></span>
+        <span>
+          <strong>NHSO REP</strong>
+          <small>Download Manager</small>
+        </span>
+      </a>
+
+      <div class="auth-strip" aria-live="polite">
+        <span id="authIndicator" class="status-dot is-checking"></span>
+        <span class="auth-copy">
+          <strong id="authLabel">กำลังตรวจสอบ SSO</strong>
+          <small id="authHcode">รหัสหน่วยบริการ -</small>
+        </span>
+        <button id="loginButton" class="btn btn-sm btn-outline-light" type="button">
+          <i data-lucide="log-in"></i>
+          <span>เข้าสู่ระบบ NHSO</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="title-band">
+      <div class="container-fluid app-container title-inner">
+        <div>
+          <p class="section-kicker">งานดาวน์โหลด</p>
+          <h1>รับชุดข้อมูลผลการตรวจสอบ (REP)</h1>
+        </div>
+        <div id="runState" class="run-state is-idle">
+          <i data-lucide="circle-check"></i>
+          <span>พร้อมทำงาน</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace-band">
+      <div class="container-fluid app-container workspace-grid">
+        <aside class="control-pane" aria-labelledby="requestHeading">
+          <div class="pane-heading">
+            <div>
+              <p class="section-kicker">เงื่อนไข</p>
+              <h2 id="requestHeading">ช่วงข้อมูลและปลายทาง</h2>
+            </div>
+            <i data-lucide="sliders-horizontal"></i>
+          </div>
+
+          <form id="downloadForm" novalidate>
+            <div class="date-grid">
+              <div>
+                <label class="form-label" for="startDate">วันที่เริ่มต้น</label>
+                <input class="form-control" id="startDate" name="start_date" type="date" required>
+              </div>
+              <div>
+                <label class="form-label" for="endDate">วันที่สิ้นสุด</label>
+                <input class="form-control" id="endDate" name="end_date" type="date" required>
+              </div>
+            </div>
+
+            <div class="field-block">
+              <label class="form-label" for="destination">โฟลเดอร์ปลายทาง</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="folder"></i>
+                <input
+                  class="form-control"
+                  id="destination"
+                  name="destination"
+                  type="text"
+                  value="{{ default_destination }}"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="option-row">
+              <div class="form-check form-switch">
+                <input class="form-check-input" id="overwrite" name="overwrite" type="checkbox" role="switch">
+                <label class="form-check-label" for="overwrite">เขียนทับไฟล์เดิม</label>
+              </div>
+            </div>
+
+            <details class="advanced-options">
+              <summary>ตัวเลือกขั้นสูง</summary>
+              <div class="advanced-body">
+                <div>
+                  <label class="form-label" for="hcode">รหัสหน่วยบริการ</label>
+                  <input class="form-control" id="hcode" name="hcode" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="ใช้ค่าจาก SSO">
+                </div>
+                <div class="form-check form-switch insecure-option">
+                  <input class="form-check-input" id="insecure" name="insecure" type="checkbox" role="switch">
+                  <label class="form-check-label" for="insecure">ปิดการตรวจสอบ SSL certificate</label>
+                </div>
+              </div>
+            </details>
+
+            <div id="formAlert" class="form-alert" role="alert" hidden></div>
+
+            <div class="action-row">
+              <button id="previewButton" class="btn btn-outline-primary" type="submit" data-action="preview">
+                <i data-lucide="list-search"></i>
+                <span>ตรวจสอบรายการ</span>
+              </button>
+              <button id="downloadButton" class="btn btn-primary" type="button">
+                <i data-lucide="download"></i>
+                <span>เริ่มดาวน์โหลด</span>
+              </button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="result-pane" aria-labelledby="resultHeading">
+          <div class="pane-heading result-heading">
+            <div>
+              <p class="section-kicker">ผลลัพธ์</p>
+              <h2 id="resultHeading">รายการ REP</h2>
+            </div>
+            <button id="clearButton" class="icon-button" type="button" title="ล้างผลลัพธ์" aria-label="ล้างผลลัพธ์">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+          </div>
+
+          <div class="metric-grid" aria-label="สรุปผล">
+            <div class="metric"><span>พบ</span><strong id="matchedCount">0</strong></div>
+            <div class="metric"><span>ดาวน์โหลด</span><strong id="downloadedCount">0</strong></div>
+            <div class="metric"><span>มีอยู่แล้ว</span><strong id="existsCount">0</strong></div>
+            <div class="metric is-danger"><span>ผิดพลาด</span><strong id="failedCount">0</strong></div>
+          </div>
+
+          <div id="emptyState" class="empty-state">
+            <i data-lucide="inbox"></i>
+            <strong>ยังไม่มีผลการตรวจสอบ</strong>
+          </div>
+
+          <div id="resultTableWrap" class="table-responsive result-table-wrap" hidden>
+            <table class="table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">REP File</th>
+                  <th scope="col">Local File</th>
+                  <th scope="col">ผลลัพธ์</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>window.REP_APP = { defaultDestination: {{ default_destination | tojson }} };</script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="{{ url_for('static', path='/js/app.js') }}"></script>
+</body>
+</html>
