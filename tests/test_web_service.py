@@ -102,6 +102,8 @@ class DownloadAdapterTests(unittest.TestCase):
             overwrite=True,
             dry_run=True,
             insecure=True,
+            progress_callback=None,
+            log_callback=None,
         )
 
     def test_default_destination_does_not_expose_other_settings(self):

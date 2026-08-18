@@ -1,10 +1,11 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import requests
 from fastapi.testclient import TestClient
 
 from nhso_rep_webapp.app.main import create_app
+from nhso_rep_webapp.app.services.job_manager import JobConflictError
 
 
 VALID_REQUEST = {
@@ -49,7 +50,8 @@ SERVICE_RESULT = {
 
 class WebApiTests(unittest.TestCase):
     def setUp(self):
-        self.client = TestClient(create_app())
+        self.job_manager = MagicMock()
+        self.client = TestClient(create_app(job_manager=self.job_manager))
 
     def tearDown(self):
         self.client.close()
@@ -104,16 +106,44 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(request.destination, VALID_REQUEST["destination"])
         self.assertFalse(request.overwrite)
 
-    @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
-    def test_download_calls_shared_service_with_dry_run_disabled(self, run_download):
-        result = dict(SERVICE_RESULT, dry_run=False)
-        run_download.return_value = result
+    def test_download_queues_background_job(self):
+        self.job_manager.submit.return_value = "job-123"
         request_body = dict(VALID_REQUEST, overwrite=True)
         response = self.client.post("/api/downloads", json=request_body)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(run_download.call_args.kwargs["dry_run"])
-        self.assertTrue(run_download.call_args.args[0].overwrite)
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json(), {"job_id": "job-123", "status": "queued"})
+        self.assertTrue(self.job_manager.submit.call_args.args[0].overwrite)
+
+    def test_second_active_download_is_rejected(self):
+        self.job_manager.submit.side_effect = JobConflictError("active")
+        response = self.client.post("/api/downloads", json=VALID_REQUEST)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.json(),
+            {"detail": "An NHSO download job is already running"},
+        )
+
+    def test_job_status_and_logs_use_job_manager(self):
+        self.job_manager.get.return_value = {"job_id": "job-123", "status": "running"}
+        self.job_manager.get_logs.return_value = [
+            {"timestamp": "2026-08-18T00:00:00+00:00", "level": "info", "message": "started"}
+        ]
+
+        status_response = self.client.get("/api/jobs/job-123")
+        logs_response = self.client.get("/api/jobs/job-123/logs")
+
+        self.assertEqual(status_response.status_code, 200)
+        self.assertEqual(status_response.json()["status"], "running")
+        self.assertEqual(logs_response.status_code, 200)
+        self.assertEqual(logs_response.json()["logs"][0]["message"], "started")
+
+    def test_unknown_job_returns_not_found(self):
+        self.job_manager.get.return_value = None
+        response = self.client.get("/api/jobs/missing")
+
+        self.assertEqual(response.status_code, 404)
 
     @patch("nhso_rep_webapp.app.api.downloads.rep_service.run_download")
     def test_invalid_date_range_is_rejected_before_service(self, run_download):

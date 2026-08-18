@@ -1,10 +1,11 @@
 """Preview and synchronous download routes for the Phase 4 MVP."""
 
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, status
 
 from ..models.schemas import DownloadRequest
 from ..services import rep_service
+from ..services.job_manager import JobConflictError
 
 
 router = APIRouter(prefix="/api/downloads", tags=["downloads"])
@@ -37,6 +38,13 @@ def preview_download(request: DownloadRequest):
     return _run_request(request, dry_run=True)
 
 
-@router.post("")
-def start_download(request: DownloadRequest):
-    return _run_request(request, dry_run=False)
+@router.post("", status_code=status.HTTP_202_ACCEPTED)
+def start_download(download_request: DownloadRequest, request: Request):
+    try:
+        job_id = request.app.state.job_manager.submit(download_request)
+    except JobConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="An NHSO download job is already running",
+        ) from exc
+    return {"job_id": job_id, "status": "queued"}

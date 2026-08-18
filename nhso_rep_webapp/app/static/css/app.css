@@ -167,6 +167,12 @@ h2 { font-size: 17px; font-weight: 650; }
 .metric strong { margin-top: 4px; font-size: 24px; line-height: 1; }
 .metric.is-danger strong { color: var(--danger); }
 
+.job-progress { padding: 14px 20px; border-bottom: 1px solid var(--line); background: #fbfcfc; }
+.job-progress-copy { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 650; }
+.job-progress-copy strong { color: var(--ink); }
+.progress { height: 7px; border-radius: 4px; background: #dfe5e8; }
+.progress-bar { width: 0; background-color: var(--accent); transition: width .2s ease; }
+
 .empty-state { min-height: 326px; display: grid; place-content: center; justify-items: center; gap: 9px; color: #88939e; }
 .empty-state svg { width: 30px; height: 30px; }
 .empty-state strong { font-size: 13px; font-weight: 600; }
@@ -177,6 +183,12 @@ h2 { font-size: 17px; font-weight: 650; }
 .result-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 8px; border-radius: 4px; background: #edf2f4; color: #48545f; font-size: 10px; font-weight: 700; }
 .result-badge.is-success { background: #e9f8f4; color: var(--accent-dark); }
 .result-badge.is-error { background: #fff0ef; color: var(--danger); }
+.job-log-panel { border-top: 1px solid var(--line); background: #f7f9fa; }
+.job-log-panel summary { padding: 12px 20px; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; }
+.job-log-list { max-height: 180px; margin: 0; padding: 0 20px 14px 42px; overflow: auto; color: #4f5c68; font-family: Consolas, monospace; font-size: 10px; }
+.job-log-list li { padding: 3px 0; }
+.job-log-list li.is-error { color: var(--danger); }
+.job-log-list li.is-warning { color: var(--warning); }
 
 @media (max-width: 900px) {
   .workspace-grid { grid-template-columns: 1fr; }

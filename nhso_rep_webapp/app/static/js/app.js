@@ -24,7 +24,13 @@
     matchedCount: document.getElementById("matchedCount"),
     downloadedCount: document.getElementById("downloadedCount"),
     existsCount: document.getElementById("existsCount"),
-    failedCount: document.getElementById("failedCount")
+    failedCount: document.getElementById("failedCount"),
+    jobProgress: document.getElementById("jobProgress"),
+    jobProgressLabel: document.getElementById("jobProgressLabel"),
+    jobProgressPercent: document.getElementById("jobProgressPercent"),
+    jobProgressBar: document.getElementById("jobProgressBar"),
+    jobLogPanel: document.getElementById("jobLogPanel"),
+    jobLogList: document.getElementById("jobLogList")
   };
 
   function isoDate(date) {
@@ -92,12 +98,16 @@
     return labels[result] || result || "ไม่ทราบผล";
   }
 
-  function renderResult(data) {
-    const stats = data.stats || {};
+  function renderStats(stats) {
     elements.matchedCount.textContent = stats.matched || 0;
     elements.downloadedCount.textContent = stats.downloaded || 0;
     elements.existsCount.textContent = stats.exists || 0;
     elements.failedCount.textContent = stats.failed || 0;
+  }
+
+  function renderResult(data) {
+    const stats = data.stats || {};
+    renderStats(stats);
     elements.resultTableBody.replaceChildren();
 
     const files = Array.isArray(data.files) ? data.files : [];
@@ -131,6 +141,67 @@
     renderResult({ stats: {}, files: [] });
     clearError();
     setRunResult(true, "พร้อมทำงาน");
+    elements.jobProgress.hidden = true;
+    elements.jobLogPanel.hidden = true;
+    elements.jobLogList.replaceChildren();
+  }
+
+  function sleep(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+  }
+
+  function renderJobProgress(job) {
+    const stats = job.progress || {};
+    renderStats(stats);
+    elements.jobProgress.hidden = false;
+    const processed = (stats.downloaded || 0) + (stats.exists || 0) + (stats.failed || 0);
+    const matched = stats.matched || 0;
+    const percent = matched > 0 ? Math.min(100, Math.round((processed / matched) * 100)) : 0;
+    const searching = job.status === "queued" || (job.status === "running" && matched === 0);
+    elements.jobProgressLabel.textContent = job.status === "queued"
+      ? "อยู่ในคิว"
+      : searching ? "กำลังค้นหารายการ REP" : "กำลังดาวน์โหลดไฟล์";
+    elements.jobProgressPercent.textContent = searching ? "..." : `${percent}%`;
+    elements.jobProgressBar.style.width = searching ? "100%" : `${percent}%`;
+    elements.jobProgressBar.classList.toggle("progress-bar-animated", searching || job.status === "running");
+    elements.jobProgressBar.parentElement.setAttribute("aria-valuenow", String(percent));
+  }
+
+  async function refreshJobLogs(jobId) {
+    const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/logs`);
+    if (!response.ok) return;
+    const data = await response.json();
+    const logs = Array.isArray(data.logs) ? data.logs : [];
+    elements.jobLogPanel.hidden = logs.length === 0;
+    elements.jobLogList.replaceChildren();
+    logs.slice(-100).forEach((entry) => {
+      const item = document.createElement("li");
+      item.className = `is-${entry.level || "info"}`;
+      item.textContent = entry.message || "";
+      elements.jobLogList.appendChild(item);
+    });
+  }
+
+  async function pollJob(jobId) {
+    while (true) {
+      const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+      const job = await response.json();
+      if (!response.ok) throw new Error(errorMessage(job, "ไม่พบสถานะงานดาวน์โหลด"));
+      renderJobProgress(job);
+      await refreshJobLogs(jobId);
+
+      if (job.status === "completed" || job.status === "completed_with_errors") {
+        renderResult(job.result || { stats: job.progress, files: [] });
+        elements.jobProgressBar.style.width = "100%";
+        elements.jobProgressPercent.textContent = "100%";
+        setRunResult(job.status === "completed", job.status === "completed" ? "ดาวน์โหลดเสร็จแล้ว" : "เสร็จพร้อมข้อผิดพลาด");
+        return;
+      }
+      if (job.status === "failed") {
+        throw new Error(job.error?.message || "งานดาวน์โหลดไม่สำเร็จ");
+      }
+      await sleep(1000);
+    }
   }
 
   async function requestDownload(endpoint, isPreview) {
@@ -150,9 +221,13 @@
       });
       const data = await response.json();
       if (!response.ok) throw new Error(errorMessage(data, "ไม่สามารถดำเนินการได้"));
-      renderResult(data);
-      const failed = data.stats?.failed || 0;
-      setRunResult(failed === 0, isPreview ? "ตรวจสอบรายการแล้ว" : "ดาวน์โหลดเสร็จแล้ว");
+      if (isPreview) {
+        renderResult(data);
+        const failed = data.stats?.failed || 0;
+        setRunResult(failed === 0, "ตรวจสอบรายการแล้ว");
+      } else {
+        await pollJob(data.job_id);
+      }
     } catch (error) {
       showError(error.message || "ไม่สามารถเชื่อมต่อระบบได้");
     } finally {

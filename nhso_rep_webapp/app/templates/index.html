@@ -141,6 +141,16 @@
             <div class="metric is-danger"><span>ผิดพลาด</span><strong id="failedCount">0</strong></div>
           </div>
 
+          <div id="jobProgress" class="job-progress" hidden>
+            <div class="job-progress-copy">
+              <span id="jobProgressLabel">กำลังเตรียมงาน</span>
+              <strong id="jobProgressPercent">0%</strong>
+            </div>
+            <div class="progress" role="progressbar" aria-label="ความคืบหน้าการดาวน์โหลด" aria-valuemin="0" aria-valuemax="100">
+              <div id="jobProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+            </div>
+          </div>
+
           <div id="emptyState" class="empty-state">
             <i data-lucide="inbox"></i>
             <strong>ยังไม่มีผลการตรวจสอบ</strong>
@@ -159,6 +169,11 @@
               <tbody id="resultTableBody"></tbody>
             </table>
           </div>
+
+          <details id="jobLogPanel" class="job-log-panel" hidden>
+            <summary>บันทึกการทำงาน</summary>
+            <ol id="jobLogList" class="job-log-list"></ol>
+          </details>
         </section>
       </div>
     </section>

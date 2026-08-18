@@ -57,7 +57,13 @@ def login_sso() -> dict:
     return {"success": True, "status": "ready"}
 
 
-def run_download(request, *, dry_run: bool) -> dict:
+def run_download(
+    request,
+    *,
+    dry_run: bool,
+    progress_callback=None,
+    log_callback=None,
+) -> dict:
     """Run the shared REP service using validated web request values."""
     return core.download_rep(
         start=request.start_date.isoformat(),
@@ -67,4 +73,6 @@ def run_download(request, *, dry_run: bool) -> dict:
         overwrite=request.overwrite,
         dry_run=dry_run,
         insecure=request.insecure,
+        progress_callback=progress_callback,
+        log_callback=log_callback,
     )
