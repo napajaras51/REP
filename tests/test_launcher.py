@@ -31,6 +31,7 @@ class BrowserLauncherTests(unittest.TestCase):
     def test_default_launcher_starts_browser_thread(self):
         thread = MagicMock()
         with (
+            patch.object(run_webapp, "existing_app_is_running", return_value=False),
             patch.object(run_webapp, "configure_logging"),
             patch.object(run_webapp.threading, "Thread", return_value=thread) as thread_type,
             patch.object(run_webapp.uvicorn, "run"),
@@ -39,6 +40,17 @@ class BrowserLauncherTests(unittest.TestCase):
 
         self.assertTrue(thread_type.call_args.kwargs["daemon"])
         thread.start.assert_called_once_with()
+
+    def test_existing_app_opens_without_starting_another_server(self):
+        with (
+            patch.object(run_webapp, "existing_app_is_running", return_value=True),
+            patch.object(run_webapp.webbrowser, "open") as opener,
+            patch.object(run_webapp.uvicorn, "run") as run,
+        ):
+            run_webapp.main([])
+
+        opener.assert_called_once_with(run_webapp.APP_URL)
+        run.assert_not_called()
 
     def test_windows_launcher_keeps_local_python_entrypoint(self):
         launcher = Path(__file__).resolve().parents[1] / "Start NHSO REP Web App.cmd"

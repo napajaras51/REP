@@ -1,6 +1,7 @@
 """Start the NHSO REP web application on the local machine only."""
 
 import argparse
+import json
 import threading
 import time
 import webbrowser
@@ -15,6 +16,17 @@ from nhso_rep_webapp.app.logging_setup import configure_logging
 HOST = "127.0.0.1"
 PORT = 8000
 APP_URL = f"http://{HOST}:{PORT}"
+APP_TITLE = "NHSO REP Download Manager"
+
+
+def existing_app_is_running(url: str = APP_URL) -> bool:
+    """Return true only when the NHSO REP application owns the local port."""
+    try:
+        with urlopen(f"{url}/openapi.json", timeout=1) as response:
+            payload = json.load(response)
+        return response.status == 200 and payload.get("info", {}).get("title") == APP_TITLE
+    except (OSError, URLError, ValueError, TypeError):
+        return False
 
 
 def open_browser_when_ready(
@@ -46,6 +58,12 @@ def main(argv=None) -> None:
         help="Do not open the local web application in the default browser.",
     )
     args = parser.parse_args(argv)
+    if existing_app_is_running():
+        print(f"NHSO REP Download Manager is already running at {APP_URL}")
+        if not args.no_browser:
+            webbrowser.open(APP_URL)
+        return
+
     configure_logging()
     if not args.no_browser:
         threading.Thread(
