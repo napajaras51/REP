@@ -3,6 +3,7 @@
 import copy
 import re
 import threading
+import time
 import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
@@ -65,13 +66,15 @@ class DownloadJob:
     result: dict | None = None
     error: dict | None = None
     logs: deque = field(default_factory=lambda: deque(maxlen=500))
+    history_warning_logged: bool = False
 
 
 class JobManager:
     """Run at most one NHSO download at a time in a background thread."""
 
-    def __init__(self, runner: Callable | None = None):
+    def __init__(self, runner: Callable | None = None, history_store=None):
         self._runner = runner or rep_service.run_download
+        self._history_store = history_store
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="nhso-rep")
         self._jobs: dict[str, DownloadJob] = {}
         self._active_job_id: str | None = None
@@ -89,6 +92,13 @@ class JobManager:
             job = DownloadJob(job_id=job_id, request=request, request_data=request_data)
             self._jobs[job_id] = job
             self._active_job_id = job_id
+            if self._history_store:
+                try:
+                    self._history_store.create_job(self._snapshot(job))
+                except Exception as exc:
+                    del self._jobs[job_id]
+                    self._active_job_id = None
+                    raise RuntimeError("Unable to create download history record") from exc
             self._executor.submit(self._run, job_id)
             return job_id
 
@@ -111,8 +121,12 @@ class JobManager:
             job.status = "running"
             job.started_at = utc_now()
             self._append_log(job, "Download job started", "info")
+            self._persist(job, "mark_started", self._snapshot(job))
+
+        last_history_update = 0.0
 
         def progress_callback(event: dict) -> None:
+            nonlocal last_history_update
             stats = event.get("stats")
             if not isinstance(stats, dict):
                 return
@@ -121,6 +135,10 @@ class JobManager:
                 current.progress.update(
                     {key: int(stats.get(key, 0)) for key in EMPTY_STATS}
                 )
+                now = time.monotonic()
+                if self._history_store and now - last_history_update >= 0.5:
+                    self._persist(current, "update_progress", job_id, current.progress)
+                    last_history_update = now
 
         def log_callback(message: str, level: str = "info") -> None:
             with self._lock:
@@ -160,8 +178,19 @@ class JobManager:
             with self._lock:
                 current = self._jobs[job_id]
                 current.completed_at = utc_now()
+                self._persist(current, "complete_job", self._snapshot(current))
                 if self._active_job_id == job_id:
                     self._active_job_id = None
+
+    def _persist(self, job: DownloadJob, method_name: str, *args) -> None:
+        if not self._history_store:
+            return
+        try:
+            getattr(self._history_store, method_name)(*args)
+        except Exception:
+            if not job.history_warning_logged:
+                self._append_log(job, "Download history could not be updated", "warning")
+                job.history_warning_logged = True
 
     def _append_log(self, job: DownloadJob, message: object, level: str) -> None:
         safe_level = level if level in {"debug", "info", "warning", "error"} else "info"

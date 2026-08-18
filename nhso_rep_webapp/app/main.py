@@ -8,11 +8,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .api import auth, downloads, jobs, pages
+from .api import auth, downloads, history, jobs, pages
 from .services.job_manager import JobManager
+from .services.history_store import HistoryStore
 
 
-def create_app(job_manager=None) -> FastAPI:
+def create_app(job_manager=None, history_store=None) -> FastAPI:
     """Create the local NHSO REP FastAPI application."""
     application = FastAPI(
         title="NHSO REP Download Manager",
@@ -22,7 +23,11 @@ def create_app(job_manager=None) -> FastAPI:
         TrustedHostMiddleware,
         allowed_hosts=["127.0.0.1", "localhost", "testserver"],
     )
-    application.state.job_manager = job_manager or JobManager()
+    if job_manager is None:
+        history_store = history_store or HistoryStore()
+        job_manager = JobManager(history_store=history_store)
+    application.state.history_store = history_store
+    application.state.job_manager = job_manager
 
     @application.middleware("http")
     async def reject_cross_origin_writes(request, call_next):
@@ -38,6 +43,7 @@ def create_app(job_manager=None) -> FastAPI:
     application.include_router(auth.router)
     application.include_router(downloads.router)
     application.include_router(jobs.router)
+    application.include_router(history.router)
 
     @application.get("/api/health", tags=["system"])
     def health() -> dict[str, str]:

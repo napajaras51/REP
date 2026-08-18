@@ -2,6 +2,7 @@ import threading
 import time
 import unittest
 from datetime import date
+from unittest.mock import MagicMock
 
 from nhso_rep_webapp.app.models.schemas import DownloadRequest
 from nhso_rep_webapp.app.services.job_manager import JobConflictError, JobManager
@@ -105,6 +106,22 @@ class JobManagerTests(unittest.TestCase):
         try:
             self.assertIsNone(manager.get("missing"))
             self.assertIsNone(manager.get_logs("missing"))
+        finally:
+            manager.shutdown(wait=True)
+
+    def test_terminal_job_is_persisted_to_history_store(self):
+        history = MagicMock()
+
+        def runner(_request, **_kwargs):
+            return {"status": "completed", "stats": {"matched": 0}, "files": []}
+
+        manager = JobManager(runner=runner, history_store=history)
+        try:
+            job_id = manager.submit(request_model())
+            wait_for_status(manager, job_id, {"completed"})
+            history.create_job.assert_called_once()
+            history.mark_started.assert_called_once()
+            history.complete_job.assert_called_once()
         finally:
             manager.shutdown(wait=True)
 
